@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xmlns:spring="http://www.springframework.org/schema/beans"
+      xmlns:file="http://www.mulesoft.org/schema/mule/file"
+      xmlns:http="http://www.mulesoft.org/schema/mule/http"
+      xmlns:jdbc="http://www.mulesoft.org/schema/mule/jdbc"
+      xmlns:jms="http://www.mulesoft.org/schema/mule/jms"
+      xmlns:vm="http://www.mulesoft.org/schema/mule/vm"
+      xmlns:client="http://www.mulesoft.org/schema/mule/client"
+      xmlns:cxf="http://www.mulesoft.org/schema/mule/cxf"
+      xmlns:management="http://www.mulesoft.org/schema/mule/management"
+      xmlns:scripting="http://www.mulesoft.org/schema/mule/scripting"
+      xmlns:sxc="http://www.mulesoft.org/schema/mule/sxc"
+      xmlns:mule-xml="http://www.mulesoft.org/schema/mule/xml"
+      xmlns:atom="http://www.mulesoft.org/schema/mule/atom"
+      xmlns:ibeans="http://www.mulesoft.org/schema/mule/ibeans"
+    xsi:schemaLocation="
+        http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/3.2/mule.xsd
+        http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/3.2/mule-file.xsd
+        http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/3.2/mule-http.xsd
+        http://www.mulesoft.org/schema/mule/jdbc http://www.mulesoft.org/schema/mule/jdbc/3.2/mule-jdbc.xsd
+        http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/3.2/mule-jms.xsd
+        http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/3.2/mule-vm.xsd
+        http://www.mulesoft.org/schema/mule/client http://www.mulesoft.org/schema/mule/client/3.2/mule-client.xsd
+        http://www.mulesoft.org/schema/mule/cxf http://www.mulesoft.org/schema/mule/cxf/3.2/mule-cxf.xsd
+        http://www.mulesoft.org/schema/mule/management http://www.mulesoft.org/schema/mule/management/3.2/mule-management.xsd
+        http://www.mulesoft.org/schema/mule/scripting http://www.mulesoft.org/schema/mule/scripting/3.2/mule-scripting.xsd
+        http://www.mulesoft.org/schema/mule/sxc http://www.mulesoft.org/schema/mule/sxc/3.2/mule-sxc.xsd
+        http://www.mulesoft.org/schema/mule/xml http://www.mulesoft.org/schema/mule/xml/3.2/mule-xml.xsd
+        http://www.mulesoft.org/schema/mule/atom http://www.mulesoft.org/schema/mule/atom/3.2/mule-atom.xsd
+        http://www.mulesoft.org/schema/mule/ibeans http://www.mulesoft.org/schema/mule/ibeans/3.2/mule-ibeans.xsd
+        http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd">
+
+    <description>
+    Consumes CAP messages from NOAA and distrbutes them. POC.
+    </description>
+
+    <file:connector name="testOutput" outputAppend="true"/>
+
+    <http:polling-connector name="atomConnector" pollingFrequency="1000" discardEmptyContent="true"/>
+
+    <flow name="nationalAlerts">
+        <http:inbound-endpoint address="http://alerts.weather.gov/cap/us.php?x=1" connector-ref="atomConnector">
+            <atom:feed-splitter/>
+            <atom:entry-last-updated-filter/> 
+        </http:inbound-endpoint>
+
+        <!-- 
+        <expression-transformer>
+            <return-argument evaluator="bean" expression="summary"/>
+        </expression-transformer>
+        <byte-array-to-string-transformer/>
+        -->
+        <object-to-string-transformer/>
+
+        <file:outbound-endpoint connector-ref="testOutput" path="/tmp/noaa-cap-poc" outputPattern="temp.txt">
+        </file:outbound-endpoint>
+    </flow>
+</mule>
