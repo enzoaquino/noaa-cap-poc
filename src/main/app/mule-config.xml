@@ -14,6 +14,7 @@
       xmlns:sxc="http://www.mulesoft.org/schema/mule/sxc"
       xmlns:mule-xml="http://www.mulesoft.org/schema/mule/xml"
       xmlns:atom="http://www.mulesoft.org/schema/mule/atom"
+      xmlns:json="http://www.mulesoft.org/schema/mule/json"
       xmlns:ibeans="http://www.mulesoft.org/schema/mule/ibeans"
     xsi:schemaLocation="
         http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/3.2/mule.xsd
@@ -29,6 +30,7 @@
         http://www.mulesoft.org/schema/mule/sxc http://www.mulesoft.org/schema/mule/sxc/3.2/mule-sxc.xsd
         http://www.mulesoft.org/schema/mule/xml http://www.mulesoft.org/schema/mule/xml/3.2/mule-xml.xsd
         http://www.mulesoft.org/schema/mule/atom http://www.mulesoft.org/schema/mule/atom/3.2/mule-atom.xsd
+        http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/3.2/mule-json.xsd
         http://www.mulesoft.org/schema/mule/ibeans http://www.mulesoft.org/schema/mule/ibeans/3.2/mule-ibeans.xsd
         http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd">
 
@@ -45,16 +47,17 @@
             <atom:feed-splitter/>
             <atom:entry-last-updated-filter/> 
         </http:inbound-endpoint>
+    
+        <bean-builder-transformer beanClass="com.cassidian.cap.Alert">
+            <bean-property property-name="author" evaluator="bean" expression="author.name"/>
+            <bean-property property-name="title" evaluator="bean" expression="title"/>
+            <bean-property property-name="summary" evaluator="bean" expression="summary"/>
+            <bean-property property-name="url" evaluator="groovy" expression="payload.links[0].href"/>
+        </bean-builder-transformer>
 
-        <!-- 
-        <expression-transformer>
-            <return-argument evaluator="bean" expression="summary"/>
-        </expression-transformer>
-        <byte-array-to-string-transformer/>
-        -->
-        <object-to-string-transformer/>
-
-        <file:outbound-endpoint connector-ref="testOutput" path="/tmp/noaa-cap-poc" outputPattern="temp.txt">
+        <json:object-to-json-transformer/>
+        <append-string-transformer message="&#xD;&#xA;&#xD;&#xA;" />
+        <file:outbound-endpoint connector-ref="testOutput" path="/tmp/noaa-cap-poc" outputPattern="alerts.txt">
         </file:outbound-endpoint>
     </flow>
 </mule>
