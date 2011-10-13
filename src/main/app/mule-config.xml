@@ -80,7 +80,7 @@
         </file:outbound-endpoint>
         -->
 
-        <amqp:outbound-endpoint routingKey='noaa.na*' 
+        <amqp:outbound-endpoint routingKey='noaa.na' 
             exchangeName="alerts" 
             exchangeAutoDelete="false" 
             exchangeDurable="false" 
