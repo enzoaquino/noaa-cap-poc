@@ -15,6 +15,8 @@
       xmlns:mule-xml="http://www.mulesoft.org/schema/mule/xml"
       xmlns:atom="http://www.mulesoft.org/schema/mule/atom"
       xmlns:json="http://www.mulesoft.org/schema/mule/json"
+      xmlns:amqp="http://www.mulesoft.org/schema/mule/amqp"
+      xmlns:twitter="http://www.mulesoft.org/schema/mule/twitter"
       xmlns:ibeans="http://www.mulesoft.org/schema/mule/ibeans"
     xsi:schemaLocation="
         http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/3.2/mule.xsd
@@ -31,6 +33,8 @@
         http://www.mulesoft.org/schema/mule/xml http://www.mulesoft.org/schema/mule/xml/3.2/mule-xml.xsd
         http://www.mulesoft.org/schema/mule/atom http://www.mulesoft.org/schema/mule/atom/3.2/mule-atom.xsd
         http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/3.2/mule-json.xsd
+        http://www.mulesoft.org/schema/mule/twitter http://www.mulesoft.org/schema/mule/twitter/3.2/mule-twitter.xsd
+        http://www.mulesoft.org/schema/mule/amqp http://www.mulesoft.org/schema/mule/amqp/3.2/mule-amqp.xsd
         http://www.mulesoft.org/schema/mule/ibeans http://www.mulesoft.org/schema/mule/ibeans/3.2/mule-ibeans.xsd
         http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd">
 
@@ -41,6 +45,21 @@
     <file:connector name="testOutput" outputAppend="true"/>
 
     <http:polling-connector name="atomConnector" pollingFrequency="1000" discardEmptyContent="true"/>
+
+    <amqp:connector name="rabbit" host="192.168.34.132" />
+
+    <flow name="consumeQueue">
+        <amqp:inbound-endpoint exchangeName="alerts"
+            routingKey="noaa.*"
+            queueName="noaa" 
+            queueDurable="false"
+            queueExclusive="false"
+            queueAutoDelete="true"
+            connector-ref="rabbit"/>
+        <object-to-string-transformer/>
+        <echo-component/>
+        <file:outbound-endpoint connector-ref="testOutput" path="/tmp/noaa-cap-poc" outputPattern="alerts.txt"/>
+    </flow>
 
     <flow name="nationalAlerts">
         <http:inbound-endpoint address="http://alerts.weather.gov/cap/us.php?x=1" connector-ref="atomConnector">
@@ -56,8 +75,18 @@
         </bean-builder-transformer>
 
         <json:object-to-json-transformer/>
+
+        <!--
         <append-string-transformer message="&#xD;&#xA;&#xD;&#xA;" />
         <file:outbound-endpoint connector-ref="testOutput" path="/tmp/noaa-cap-poc" outputPattern="alerts.txt">
         </file:outbound-endpoint>
+        -->
+
+        <amqp:outbound-endpoint routingKey='noaa.na*' 
+            exchangeName="alerts" 
+            exchangeAutoDelete="false" 
+            exchangeDurable="false" 
+            exchangeType="topic"
+            connector-ref="rabbit"/>        
     </flow>
 </mule>
