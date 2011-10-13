@@ -56,8 +56,6 @@
             queueExclusive="false"
             queueAutoDelete="true"
             connector-ref="rabbit"/>
-        <object-to-string-transformer/>
-        <echo-component/>
         <file:outbound-endpoint connector-ref="testOutput" path="/tmp/noaa-cap-poc" outputPattern="alerts.txt"/>
     </flow>
 
