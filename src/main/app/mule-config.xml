@@ -46,7 +46,7 @@
 
     <http:polling-connector name="atomConnector" pollingFrequency="1000" discardEmptyContent="true"/>
 
-    <amqp:connector name="rabbit" host="192.168.34.132" />
+    <amqp:connector name="rabbit" host="rabbit" />
 
     <flow name="consumeQueue">
         <amqp:inbound-endpoint exchangeName="alerts"
@@ -56,6 +56,11 @@
             queueExclusive="false"
             queueAutoDelete="true"
             connector-ref="rabbit"/>
+
+        <expression-transformer>
+            <return-argument evaluator="groovy" expression="payload"/>
+        </expression-transformer>
+        
         <file:outbound-endpoint connector-ref="testOutput" path="/tmp/noaa-cap-poc" outputPattern="alerts.txt"/>
     </flow>
 
