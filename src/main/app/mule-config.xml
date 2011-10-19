@@ -3,61 +3,54 @@
       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
       xmlns:spring="http://www.springframework.org/schema/beans"
       xmlns:context="http://www.springframework.org/schema/context"
-      xmlns:file="http://www.mulesoft.org/schema/mule/file"
       xmlns:http="http://www.mulesoft.org/schema/mule/http"
-      xmlns:jdbc="http://www.mulesoft.org/schema/mule/jdbc"
-      xmlns:jms="http://www.mulesoft.org/schema/mule/jms"
       xmlns:vm="http://www.mulesoft.org/schema/mule/vm"
-      xmlns:client="http://www.mulesoft.org/schema/mule/client"
-      xmlns:cxf="http://www.mulesoft.org/schema/mule/cxf"
-      xmlns:management="http://www.mulesoft.org/schema/mule/management"
-      xmlns:scripting="http://www.mulesoft.org/schema/mule/scripting"
-      xmlns:sxc="http://www.mulesoft.org/schema/mule/sxc"
       xmlns:mule-xml="http://www.mulesoft.org/schema/mule/xml"
       xmlns:atom="http://www.mulesoft.org/schema/mule/atom"
       xmlns:json="http://www.mulesoft.org/schema/mule/json"
       xmlns:amqp="http://www.mulesoft.org/schema/mule/amqp"
       xmlns:twitter="http://www.mulesoft.org/schema/mule/twitter"
       xmlns:bpm="http://www.mulesoft.org/schema/mule/bpm"
-      xmlns:ibeans="http://www.mulesoft.org/schema/mule/ibeans"
     xsi:schemaLocation="
         http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/3.2/mule.xsd
-        http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/3.2/mule-file.xsd
         http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/3.2/mule-http.xsd
-        http://www.mulesoft.org/schema/mule/jdbc http://www.mulesoft.org/schema/mule/jdbc/3.2/mule-jdbc.xsd
-        http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/3.2/mule-jms.xsd
         http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/3.2/mule-vm.xsd
-        http://www.mulesoft.org/schema/mule/client http://www.mulesoft.org/schema/mule/client/3.2/mule-client.xsd
-        http://www.mulesoft.org/schema/mule/cxf http://www.mulesoft.org/schema/mule/cxf/3.2/mule-cxf.xsd
-        http://www.mulesoft.org/schema/mule/management http://www.mulesoft.org/schema/mule/management/3.2/mule-management.xsd
-        http://www.mulesoft.org/schema/mule/scripting http://www.mulesoft.org/schema/mule/scripting/3.2/mule-scripting.xsd
-        http://www.mulesoft.org/schema/mule/sxc http://www.mulesoft.org/schema/mule/sxc/3.2/mule-sxc.xsd
         http://www.mulesoft.org/schema/mule/xml http://www.mulesoft.org/schema/mule/xml/3.2/mule-xml.xsd
         http://www.mulesoft.org/schema/mule/atom http://www.mulesoft.org/schema/mule/atom/3.2/mule-atom.xsd
         http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/3.2/mule-json.xsd
         http://www.mulesoft.org/schema/mule/twitter http://www.mulesoft.org/schema/mule/twitter/2.3/mule-twitter.xsd
         http://www.mulesoft.org/schema/mule/amqp http://www.mulesoft.org/schema/mule/amqp/3.2/mule-amqp.xsd
         http://www.mulesoft.org/schema/mule/bpm http://www.mulesoft.org/schema/mule/bpm/3.2/mule-bpm.xsd
-        http://www.mulesoft.org/schema/mule/ibeans http://www.mulesoft.org/schema/mule/ibeans/3.2/mule-ibeans.xsd
         http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-3.0.xsd
         http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd">
 
     <description>
     Consumes CAP messages from NOAA and distrbutes them. POC.
     </description>
-
+    
+    <!-- Load up the filtered properties file for the application -->
     <spring:beans>
         <context:property-placeholder location="classpath:noaa-cap-poc.properties" />
     </spring:beans>
-    
+
+    <!-- 
+         Instatiating an empty initial facts collection for the rules. For some reason, the rules requires
+         an initial fact set, and will throw a null pointer exception if you don't have one defined.
+    -->
     <spring:bean name="facts" class="java.util.ArrayList"/>
 
-    <file:connector name="testOutput" outputAppend="true"/>
-
+    <!--
+        Used to set up the connector that will poll our RSS feed.
+    -->
     <http:polling-connector name="atomConnector" pollingFrequency="1000" discardEmptyContent="true"/>
 
+    <!-- Used to set up the connection to RabbitMQ -->
     <amqp:connector name="rabbit" host="rabbit" />
 
+    <!-- 
+         Setting up a 'topic' exchange that the outbound endpoint will post to and that the inbound
+         endpoint will bind to.
+    -->
     <amqp:endpoint name="alertsExchange" 
          exchangeName="alerts"
          exchangeAutoDelete="false"
@@ -65,23 +58,33 @@
          exchangeType="topic"
          connector-ref="topic" />
 
+     <!-- Required setup for the rules engine. -->
     <bpm:drools />
 
+    <!-- Configures the twitter account which we will be posting to. The properties should be filtered at build. -->
 	<twitter:config name="twitter" 
         consumerKey="${twitter.consumer.key}" 
         consumerSecret="${twitter.consumer.secret}" 
         accessKey="${twitter.access.key}" 
         accessSecret="${twitter.access.secret}" />
 
+    <!-- The virtual endpoint used by the drools engine to generate new messages to tweet -->
     <vm:endpoint name="tweet" address="vm://tweet" />
 
+    <!-- 
+         This flow will send the contents of any message sent to it via Twitter. It listens on 
+         the vm://tweet inbound endpoint 
+    -->
     <flow name="tweetFlow">
         <vm:inbound-endpoint ref="tweet" />
-        <echo-component/>
+        <echo-component/> <!-- just for debugging purposes -->
 		<twitter:update-status config-ref="twitter" status="#[message]" />
     </flow>
 
-
+    <!-- 
+         This flow listens RabbitMQ on the 'alerts' exchange on for any noaa.* alerts. It expects an JSON formatted
+         Alert. It then runs the alert through drools.
+    -->
     <flow name="consumeQueue">
         <amqp:inbound-endpoint exchangeName="alerts"
             routingKey="noaa.*"
@@ -90,19 +93,25 @@
             queueExclusive="false"
             queueAutoDelete="true"
             connector-ref="rabbit"/>
-        
+
+        <!-- the message payload is a byte[] currently, so we convert it to a JSON string first. -->
         <byte-array-to-string-transformer/>
         <json:json-to-object-transformer returnClass="com.cassidian.cap.Alert"/>
 
         <bpm:rules rulesDefinition="com/cassidian/cap/alertRules.drl" initialFacts-ref="facts" />
     </flow>
 
+    <!--
+        The flow listens to NOAA's ATOM feed. It parses the message, serializes the important parts on RabbitMQ
+        using the 'alerts' exchange.
+    -->
     <flow name="nationalAlerts">
         <http:inbound-endpoint address="http://alerts.weather.gov/cap/us.php?x=1" connector-ref="atomConnector">
             <atom:feed-splitter/>
             <atom:entry-last-updated-filter/> 
         </http:inbound-endpoint>
-    
+
+        <!-- instantiate the Alert -->
         <bean-builder-transformer beanClass="com.cassidian.cap.Alert">
             <bean-property property-name="author" evaluator="bean" expression="author.name"/>
             <bean-property property-name="title" evaluator="bean" expression="title"/>
