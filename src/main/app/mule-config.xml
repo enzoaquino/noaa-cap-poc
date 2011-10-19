@@ -2,6 +2,7 @@
 <mule xmlns="http://www.mulesoft.org/schema/mule/core"
       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
       xmlns:spring="http://www.springframework.org/schema/beans"
+      xmlns:context="http://www.springframework.org/schema/context"
       xmlns:file="http://www.mulesoft.org/schema/mule/file"
       xmlns:http="http://www.mulesoft.org/schema/mule/http"
       xmlns:jdbc="http://www.mulesoft.org/schema/mule/jdbc"
@@ -17,6 +18,7 @@
       xmlns:json="http://www.mulesoft.org/schema/mule/json"
       xmlns:amqp="http://www.mulesoft.org/schema/mule/amqp"
       xmlns:twitter="http://www.mulesoft.org/schema/mule/twitter"
+      xmlns:bpm="http://www.mulesoft.org/schema/mule/bpm"
       xmlns:ibeans="http://www.mulesoft.org/schema/mule/ibeans"
     xsi:schemaLocation="
         http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/3.2/mule.xsd
@@ -33,20 +35,52 @@
         http://www.mulesoft.org/schema/mule/xml http://www.mulesoft.org/schema/mule/xml/3.2/mule-xml.xsd
         http://www.mulesoft.org/schema/mule/atom http://www.mulesoft.org/schema/mule/atom/3.2/mule-atom.xsd
         http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/3.2/mule-json.xsd
-        http://www.mulesoft.org/schema/mule/twitter http://www.mulesoft.org/schema/mule/twitter/3.2/mule-twitter.xsd
+        http://www.mulesoft.org/schema/mule/twitter http://www.mulesoft.org/schema/mule/twitter/2.3/mule-twitter.xsd
         http://www.mulesoft.org/schema/mule/amqp http://www.mulesoft.org/schema/mule/amqp/3.2/mule-amqp.xsd
+        http://www.mulesoft.org/schema/mule/bpm http://www.mulesoft.org/schema/mule/bpm/3.2/mule-bpm.xsd
         http://www.mulesoft.org/schema/mule/ibeans http://www.mulesoft.org/schema/mule/ibeans/3.2/mule-ibeans.xsd
+        http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-3.0.xsd
         http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd">
 
     <description>
     Consumes CAP messages from NOAA and distrbutes them. POC.
     </description>
 
+    <spring:beans>
+        <context:property-placeholder location="classpath:noaa-cap-poc.properties" />
+    </spring:beans>
+    
+    <spring:bean name="facts" class="java.util.ArrayList"/>
+
     <file:connector name="testOutput" outputAppend="true"/>
 
     <http:polling-connector name="atomConnector" pollingFrequency="1000" discardEmptyContent="true"/>
 
     <amqp:connector name="rabbit" host="rabbit" />
+
+    <amqp:endpoint name="alertsExchange" 
+         exchangeName="alerts"
+         exchangeAutoDelete="false"
+         exchangeDurable="false"
+         exchangeType="topic"
+         connector-ref="topic" />
+
+    <bpm:drools />
+
+	<twitter:config name="twitter" 
+        consumerKey="${twitter.consumer.key}" 
+        consumerSecret="${twitter.consumer.secret}" 
+        accessKey="${twitter.access.key}" 
+        accessSecret="${twitter.access.secret}" />
+
+    <vm:endpoint name="tweet" address="vm://tweet" />
+
+    <flow name="tweetFlow">
+        <vm:inbound-endpoint ref="tweet" />
+        <echo-component/>
+		<twitter:update-status config-ref="twitter" status="#[message]" />
+    </flow>
+
 
     <flow name="consumeQueue">
         <amqp:inbound-endpoint exchangeName="alerts"
@@ -56,12 +90,11 @@
             queueExclusive="false"
             queueAutoDelete="true"
             connector-ref="rabbit"/>
-
-        <expression-transformer>
-            <return-argument evaluator="groovy" expression="payload"/>
-        </expression-transformer>
         
-        <file:outbound-endpoint connector-ref="testOutput" path="/tmp/noaa-cap-poc" outputPattern="alerts.txt"/>
+        <byte-array-to-string-transformer/>
+        <json:json-to-object-transformer returnClass="com.cassidian.cap.Alert"/>
+
+        <bpm:rules rulesDefinition="com/cassidian/cap/alertRules.drl" initialFacts-ref="facts" />
     </flow>
 
     <flow name="nationalAlerts">
@@ -78,18 +111,9 @@
         </bean-builder-transformer>
 
         <json:object-to-json-transformer/>
-
-        <!--
-        <append-string-transformer message="&#xD;&#xA;&#xD;&#xA;" />
-        <file:outbound-endpoint connector-ref="testOutput" path="/tmp/noaa-cap-poc" outputPattern="alerts.txt">
-        </file:outbound-endpoint>
-        -->
-
+        
         <amqp:outbound-endpoint routingKey='noaa.na' 
             exchangeName="alerts" 
-            exchangeAutoDelete="false" 
-            exchangeDurable="false" 
-            exchangeType="topic"
             connector-ref="rabbit"/>        
     </flow>
 </mule>

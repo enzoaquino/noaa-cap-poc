@@ -1,5 +1,8 @@
 package com.cassidian.cap;
 
+import org.codehaus.jackson.annotate.JsonAutoDetect; 
+
+@JsonAutoDetect
 public class Alert {
     private String author;
     private String title;

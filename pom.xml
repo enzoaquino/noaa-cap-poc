@@ -24,6 +24,15 @@
     </properties>
 
     <build>
+        <filters>
+            <filter>${user.home}/noaa-cap-poc.filters</filter>
+        </filters>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>true</filtering>
+            </resource>
+        </resources>
         <!--
             Use a newer version of the install plugin than what your Maven uses by default. The
             older version failed to install the project if there was no target/classes folder.
@@ -142,7 +151,8 @@
                 </executions>
                 <configuration>
                     <mainClass>org.mule.MuleServer</mainClass>
-                    <commandlineArgs>-config target/mule-config.xml</commandlineArgs>
+                    <cleanupDaemonThreads>true</cleanupDaemonThreads>
+                    <commandlineArgs>-config src/main/app/mule-config.xml</commandlineArgs>
                 </configuration>
             </plugin>
         </plugins>
@@ -327,7 +337,7 @@
             <groupId>org.mule.modules</groupId>
             <artifactId>mule-module-json</artifactId>
             <version>${mule.version}</version>
-            <scope>runtime</scope>
+            <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>org.mule.modules</groupId>
@@ -339,11 +349,13 @@
             <groupId>org.mule.modules</groupId>
             <artifactId>mule-module-bpm</artifactId>
             <version>${mule.version}</version>
+            <scope>runtime</scope>
         </dependency>
         <dependency>
             <groupId>org.mule.modules</groupId>
             <artifactId>mule-module-drools</artifactId>
             <version>${mule.version}</version>
+            <scope>runtime</scope>
         </dependency>
         <!-- for testing -->
         <dependency>

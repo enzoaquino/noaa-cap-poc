@@ -1,0 +1,23 @@
+package com.cassidian.cap
+
+import com.cassidian.cap.Alert
+import org.mule.MessageExchangePattern
+
+global org.mule.module.bpm.MessageService mule
+
+rule "Summary too long"
+dialect "mvel"
+when 
+    alert:Alert(summary.length > 140)
+then 
+    mule.generateMessage('tweet', alert.url, null, MessageExchangePattern.ONE_WAY)
+end
+
+rule "Summary fits in tweet"
+dialect "mvel"
+when
+    alert:Alert(summary.length <= 140)
+then
+    mule.generateMessage('tweet', alert.summary, null, MessageExchangePattern.ONE_WAY)
+end
+    
