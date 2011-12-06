@@ -2,3 +2,6 @@
 .settings
 *.sw?
 target
+*.iml
+*.ipr
+*.iws

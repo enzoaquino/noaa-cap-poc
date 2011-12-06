@@ -5,7 +5,6 @@
       xmlns:context="http://www.springframework.org/schema/context"
       xmlns:http="http://www.mulesoft.org/schema/mule/http"
       xmlns:vm="http://www.mulesoft.org/schema/mule/vm"
-      xmlns:mule-xml="http://www.mulesoft.org/schema/mule/xml"
       xmlns:atom="http://www.mulesoft.org/schema/mule/atom"
       xmlns:json="http://www.mulesoft.org/schema/mule/json"
       xmlns:amqp="http://www.mulesoft.org/schema/mule/amqp"
@@ -15,7 +14,6 @@
         http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/3.2/mule.xsd
         http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/3.2/mule-http.xsd
         http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/3.2/mule-vm.xsd
-        http://www.mulesoft.org/schema/mule/xml http://www.mulesoft.org/schema/mule/xml/3.2/mule-xml.xsd
         http://www.mulesoft.org/schema/mule/atom http://www.mulesoft.org/schema/mule/atom/3.2/mule-atom.xsd
         http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/3.2/mule-json.xsd
         http://www.mulesoft.org/schema/mule/twitter http://www.mulesoft.org/schema/mule/twitter/2.3/mule-twitter.xsd
@@ -95,6 +93,7 @@
             connector-ref="rabbit"/>
 
         <!-- the message payload is a byte[] currently, so we convert it to a JSON string first. -->
+
         <byte-array-to-string-transformer/>
         <json:json-to-object-transformer returnClass="com.cassidian.cap.Alert"/>
 
